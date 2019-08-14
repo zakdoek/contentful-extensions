@@ -10,10 +10,25 @@
     <div id="content"></div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
     <script>
-      window.contentfulExtension.init(extension => {
+      const baseUrl = 'https://cyan.fenego.zone/INTERSHOP/rest/WFS/';
+      const categoriesUrl = `${baseUrl}inSPIRED-inTRONICS_Business-Site/-/categories`;
+
+      const getCategories = async () => {
+        const response = await $.get(categoriesUrl);
+        const categoryUris = response.elements.map(category => `${baseUrl}${category.uri}`);
+        const categories = await Promise.all(categoryUris.map(uri => $.get(uri)));
+
+        console.log('fetched categories:', categories);
+
+        return categories;
+      };
+
+      window.contentfulExtension.init(async extension => {
         extension.window.startAutoResizer();
 
-        $('#content').html('Ieps world...');
+        const categories = await getCategories();
+
+        $('#content').html(`Fetched ${categories.length} categories, building interface...`);
       });
     </script>
   </body>
