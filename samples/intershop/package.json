@@ -8,7 +8,8 @@
   "scripts": {
     "create": "contentful extension create",
     "update": "contentful extension update --force",
-    "start:dev": "serve"
+    "start:dev": "serve",
+    "autopublish": "watch 'yarn update' ."
   },
   "repository": {
     "type": "git",
@@ -24,7 +25,8 @@
   },
   "homepage": "https://github.com/tomknapen/contentful-extensions/tree/master/samples/shopify#readme",
   "devDependencies": {
-    "contentful-cli": "^0.11.0",
-    "https-localhost": "^4.1.3"
+    "contentful-cli": "^0.26.5",
+    "https-localhost": "^4.1.3",
+    "watch": "^1.0.2"
   }
 }
