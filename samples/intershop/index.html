@@ -6,30 +6,56 @@
     <script src="https://unpkg.com/contentful-ui-extensions-sdk@3"></script>
   </head>
   <body id="intershop-widget">
-    <h2>Intershop products</h2>
     <div id="content"></div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
     <script>
-      const baseUrl = 'https://cyan.fenego.zone/INTERSHOP/rest/WFS/';
-      const categoriesUrl = `${baseUrl}inSPIRED-inTRONICS_Business-Site/-/categories`;
+      const buildUrl = endpoint =>
+        `https://cyan.fenego.zone/INTERSHOP/rest/WFS/inSPIRED-inTRONICS_Business-Site/-/${endpoint}`;
+
+      const buildCategoriesUrl = () => buildUrl('categories');
+      const buildCategoryUrl = categoryKey => `${buildCategoriesUrl()}/${categoryKey}`;
 
       const getCategories = async () => {
-        const response = await $.get(categoriesUrl);
-        const categoryUris = response.elements.map(category => `${baseUrl}${category.uri}`);
-        const categories = await Promise.all(categoryUris.map(uri => $.get(uri)));
+        const response = await $.get(buildCategoriesUrl());
+        const categoryUris = response.elements.map(category => buildCategoryUrl(category.id));
+        const categories = await Promise.all(categoryUris.map($.get));
 
         console.log('fetched categories:', categories);
 
         return categories;
       };
 
+      buildInterface = categories =>
+        `${categories
+          .map(
+            category =>
+              `<div>
+                <h2>${category.name}</h2>
+                <ul>
+                    ${category.subCategories
+                      .map(subCategory => `<li>${subCategory.name}</li>`)
+                      .join('')}
+                </ul>
+            </div>`
+          )
+          .join('')}`;
+
       window.contentfulExtension.init(async extension => {
         extension.window.startAutoResizer();
 
+        reportProgress(`Fetching categories...`);
+
         const categories = await getCategories();
 
-        $('#content').html(`Fetched ${categories.length} categories, building interface...`);
+        reportProgress(`Fetched ${categories.length} categories, building interface...`);
+
+        const interface = buildInterface(categories);
+
+        $content.html(interface);
       });
+
+      const $content = $('#content');
+      const reportProgress = text => $content.append(`<p>${text}</p>`);
     </script>
   </body>
 </html>
