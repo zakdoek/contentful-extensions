@@ -25,8 +25,11 @@
         return categories;
       };
 
+      window.fetchProductsForCategory = categoryId =>
+        console.log('fetching products for category', categoryId);
+
       const createClickForFetchProducts = categoryId =>
-        `onclick="console.log('test: ${categoryId}')"`;
+        `onclick="fetchProductsForCategory('${categoryId}')"`;
 
       const buildInterface = categories =>
         `${categories
