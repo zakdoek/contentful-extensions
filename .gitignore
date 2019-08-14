@@ -9,3 +9,4 @@ coverage/
 .coverage/
 .contentfulrc.json
 marketplace/**/build/
+samples/intershop/index.js
