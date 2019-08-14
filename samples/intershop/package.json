@@ -1,0 +1,28 @@
+{
+  "name": "contentful-ui-intershop",
+  "version": "1.0.2",
+  "description": "Contentful UI extension to select Intershop products",
+  "engines": {
+    "node": ">=7.6"
+  },
+  "scripts": {
+    "create": "contentful extension create",
+    "update": "contentful extension update --force"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomknapen/contentful-extensions.git"
+  },
+  "keywords": [
+    "contentful"
+  ],
+  "author": "Tom Knapen <tom.knapen@ida-mediafoundry.be>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tomknapen/contentful-extensions/issues"
+  },
+  "homepage": "https://github.com/tomknapen/contentful-extensions/tree/master/samples/shopify#readme",
+  "devDependencies": {
+    "contentful-cli": "^0.11.0"
+  }
+}
