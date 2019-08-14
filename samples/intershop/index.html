@@ -25,15 +25,23 @@
         return categories;
       };
 
-      buildInterface = categories =>
+      const createClickForFetchProducts = categoryId =>
+        `onclick="console.log('test: ${categoryId}')"`;
+
+      const buildInterface = categories =>
         `${categories
           .map(
             category =>
               `<div>
-                <h2>${category.name}</h2>
+                <h2 ${createClickForFetchProducts(category.id)}>${category.name}</h2>
                 <ul>
                     ${category.subCategories
-                      .map(subCategory => `<li>${subCategory.name}</li>`)
+                      .map(
+                        subCategory =>
+                          `<li ${createClickForFetchProducts(subCategory.id)}>${
+                            subCategory.name
+                          }</li>`
+                      )
                       .join('')}
                 </ul>
             </div>`
