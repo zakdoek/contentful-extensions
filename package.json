@@ -33,21 +33,5 @@
   "engines": {
     "node": ">=10.15.0"
   },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "prettier --write --ignore-path .gitignore",
-      "eslint --fix --ignore-path .gitignore",
-      "git add"
-    ],
-    "*.md": [
-      "prettier --write",
-      "git add"
-    ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "name": "extensions"
 }
