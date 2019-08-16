@@ -276,7 +276,7 @@
                         $item.append(`<a href="#">${segment.name}</a>`);
                         $item.on("click", event => {
                             event.preventDefault();
-                            onClick(findParentCategoryFromSegment(segment.slug, root));
+                            onClick(findParentCategoryFromSlug(segment.slug, root));
                         });
                     } else {
                         $item.addClass("active");
