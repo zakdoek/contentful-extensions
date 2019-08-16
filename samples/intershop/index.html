@@ -1,72 +1,288 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Contentful UI-Extension Intershop Products</title>
-    <script src="https://unpkg.com/contentful-ui-extensions-sdk@3"></script>
-  </head>
-  <body id="intershop-widget">
-    <div id="content"></div>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-    <script>
-      const buildUrl = endpoint =>
-        `https://cyan.fenego.zone/INTERSHOP/rest/WFS/inSPIRED-inTRONICS_Business-Site/-/${endpoint}`;
+    <head>
+        <meta charset="UTF-8" />
+        <title>Contentful UI-Extension Intershop Products</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="https://contentful.github.io/ui-extensions-sdk/cf-extension.css" />
+        <style>
+            /* Bootstrap overrides */
+            .row {
+                margin-left: -0.425rem;
+                margin-right: -0.425rem;
+            }
 
-      const buildCategoriesUrl = () => buildUrl('categories');
-      const buildCategoryUrl = categoryKey => `${buildCategoriesUrl()}/${categoryKey}`;
+            [class^='col-'] {
+                padding-left: 0.424rem;
+                padding-right: 0.424rem;
+            }
 
-      const getCategories = async () => {
-        const response = await $.get(buildCategoriesUrl());
-        const categoryUris = response.elements.map(category => buildCategoryUrl(category.id));
-        const categories = await Promise.all(categoryUris.map($.get));
+            /* Custom styles */
+            .category {
+                border: 1px solid #d3dce0;
+                margin-bottom: 0.425rem;
+                cursor: pointer;
+            }
 
-        console.log('fetched categories:', categories);
+            .category:hover {
+                border-color: #5b9fef;
+            }
 
-        return categories;
-      };
+            .category .title {
+                padding: 0.8125rem 0.875rem;
+                border-bottom: 0.0625rem solid #d3dce0;
+                font-family: "Avenir Next W01", "-apple-system", "BlinkMacSystemFont", "Segoe UI", Helvetica, Arial,
+                    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+                font-weight: 600;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                text-align: right;
+                letter-spacing: 0.1rem;
+                color: #0eb87f;
+            }
+        </style>
+        <script src="https://unpkg.com/contentful-ui-extensions-sdk@3"></script>
+    </head>
+    <body id="intershop-widget">
+        <div id="content"></div>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+        <script>
+            (() => {
+                // CONSTANTS - BEGIN //
+                const ASSET_URL = "https://avatars2.githubusercontent.com/u/472182?s=400&v=4";
+                // CONSTANTS - END //
 
-      window.fetchProductsForCategory = categoryId =>
-        console.log('fetching products for category', categoryId);
+                // UTILS - BEGIN //
 
-      const createClickForFetchProducts = categoryId =>
-        `onclick="fetchProductsForCategory('${categoryId}')"`;
+                /**
+                 * Removes leading
+                 */
+                const stripLeading = path => (path.startsWith("/") ? path.slice(1) : path);
 
-      const buildInterface = categories =>
-        `${categories
-          .map(
-            category =>
-              `<div>
-                <h2 ${createClickForFetchProducts(category.id)}>${category.name}</h2>
-                <ul>
-                    ${category.subCategories
-                      .map(
-                        subCategory =>
-                          `<li ${createClickForFetchProducts(subCategory.id)}>${
-                            subCategory.name
-                          }</li>`
-                      )
-                      .join('')}
-                </ul>
-            </div>`
-          )
-          .join('')}`;
+                /**
+                 * Removes trailing
+                 */
+                const stripTrailing = path => (path.endsWith("/") ? path.slice(0, -1) : path);
 
-      window.contentfulExtension.init(async extension => {
-        extension.window.startAutoResizer();
+                /**
+                 * Strips slashes from a path
+                 */
+                const strip = path => stripLeading(stripTrailing(path));
 
-        reportProgress(`Fetching categories...`);
+                /**
+                 * Build an endpoint url
+                 **/
+                const buildUrl = (endpoint, extension) =>
+                    `${stripTrailing(extension.parameters.instance.apiBase)}/${strip(endpoint)}`;
 
-        const categories = await getCategories();
+                /**
+                 * A normalized fetch
+                 */
+                const fetch = (...args) =>
+                    window.fetch(...args).then(response => {
+                        if (response.status >= 400) {
+                            throw new Error("Something went wrong!");
+                        }
 
-        reportProgress(`Fetched ${categories.length} categories, building interface...`);
+                        return response;
+                    });
 
-        const interface = buildInterface(categories);
+                /**
+                 * Empty a target and mount a child component
+                 */
+                const mount = ($target, $component) => $target.empty().append($component);
 
-        $content.html(interface);
-      });
+                /**
+                 * Format slug on a categoryPath
+                 */
+                const normalizeCategoryPath = category =>
+                    category.categoryPath.map(segment => ({
+                        ...segment,
+                        slug: category.categoryPath
+                            .slice(0, category.categoryPath.findIndex(item => segment.id === item.id) + 1)
+                            .map(({ id }) => id)
+                            .join("/"),
+                        category,
+                    }));
 
-      const $content = $('#content');
-      const reportProgress = text => $content.append(`<p>${text}</p>`);
-    </script>
-  </body>
+                /**
+                 * Normalize the category tree
+                 */
+                const normalizeCategory = category => ({
+                    ...category,
+                    categoryPath: normalizeCategoryPath(category),
+                    subCategories: category.subCategories
+                        ? category.subCategories.map(category => normalizeCategory(category))
+                        : [],
+                });
+
+                // UTILS - END //
+
+                // ENDPOINTS - BEGIN //
+
+                const getCategories = extension =>
+                    fetch(buildUrl("categories?view=tree", extension))
+                        .then(response => response.json())
+                        .then(json => json.elements.map(category => normalizeCategory(category)));
+
+                // ENDPOINTS - END //
+
+                // COMPONENTS - BEGIN //
+
+                /**
+                 * Loading indicator
+                 */
+                const Loader = () => $(`<div>Loading...</div>`);
+
+                /**
+                 * Error indicator
+                 */
+                const Error = () => $(`<p class="cf-field-error">Something went wrong, please refresh the page!</p>`);
+
+                /**
+                 * Category
+                 */
+                const Category = (data, onClick) => {
+                    const $category = $(`
+                        <div class="col-sm-4">
+                            <div class="category">
+                                <div class="title">${data.name}</div>
+                                <div class="body">TEST</div>
+                            </div>
+                        </div>
+                    `);
+
+                    $category.on("click", () => onClick(data));
+
+                    return $category;
+                };
+
+                /**
+                 * Breadcrumb Item
+                 */
+                const BreadcrumbItem = (segment, onClick) => {
+                    const $item = $(`<li class="breadcrumb-item"></li>`);
+
+                    if (onClick) {
+                        $item.append(`<a href="#">${segment.name}</a>`);
+                        $item.on("click", event => {
+                            event.preventDefault();
+                            onClick(segment.category);
+                        });
+                    } else {
+                        $item.addClass("active");
+                        $item.text(segment.name);
+                    }
+
+                    return $item;
+                };
+
+                /**
+                 * Selected Root category
+                 */
+                const Breadcrumb = (data, onClick) => {
+                    const $breadcrumb = $(`<ol class="breadcrumb"></ol>`);
+                    const $root = $(`<li class="breadcrumb"><a href="#">Root</a></li>`);
+
+                    $root.on("click", event => {
+                        event.preventDefault();
+                        onClick(null);
+                    });
+
+                    $breadcrumb.append($root);
+
+                    for (const index in data.categoryPath) {
+                        $breadcrumb.append(
+                            BreadcrumbItem(data.categoryPath[index], index + 1 < data.categoryPath.length && onClick),
+                        );
+                    }
+
+                    return $breadcrumb;
+                };
+
+                /**
+                 * SubCategories
+                 */
+                const SubCategories = (category, onClick) => {
+                    const $subCategories = $(`<div class="subcategories"></div>`);
+                    const $list = $(`<div class="list row"></div>`);
+                    $subCategories.append($list);
+
+                    if (typeof category.length === "number") {
+                        for (const subcategory of category) {
+                            $list.append(Category(subcategory, onClick));
+                        }
+
+                        return $subCategories;
+                    }
+
+                    // Render breadcrumb
+
+                    for (const subcategory of category.subCategories) {
+                        $list.append(Category(subcategory, onClick));
+                    }
+
+                    return $subCategories;
+                };
+
+                /**
+                 * Tree component
+                 */
+                const Tree = data => {
+                    const $tree = $(`<div class="tree"></div>`);
+
+                    /**
+                     * Handle a category selection for display
+                     */
+                    const handleClick = category => {
+                        // Short circuit
+                        if (!category) {
+                            return mount($tree, SubCategories(data, handleClick));
+                        }
+
+                        if (category.subCategories && category.subCategories.length) {
+                            return mount($tree, SubCategories(category, handleClick));
+                        }
+
+                        // Render product list
+                        console.log("Render product list", category);
+                    };
+
+                    mount($tree, SubCategories(data, handleClick));
+
+                    return $tree;
+                };
+
+                /**
+                 * Category Browser
+                 */
+                const Browser = extension => {
+                    // Create the wrapper
+                    const $browser = $(`<div class="browser"></div>`);
+
+                    // Mount the loader
+                    mount($browser, Loader());
+
+                    // Fetch the resources
+                    getCategories(extension)
+                        .then(tree => mount($browser, Tree(tree)))
+                        .catch(() => mount($browser, Error()));
+
+                    return $browser;
+                };
+
+                // COMPONENTS - END //
+
+                /**
+                 * Bootstrap extension
+                 */
+                window.contentfulExtension.init(async extension => {
+                    extension.window.startAutoResizer();
+                    const $content = $("#content");
+                    mount($content, Browser(extension));
+                });
+            })();
+        </script>
+    </body>
 </html>

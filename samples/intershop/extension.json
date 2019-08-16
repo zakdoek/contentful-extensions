@@ -1,21 +1,21 @@
 {
-  "name": "Intershop Products",
-  "id": "contentful-ui-intershop",
-  "fieldTypes": ["Object"],
+  "name": "Intershop Category Browser",
+  "id": "contentful-ui-intershop-categories",
+  "fieldTypes": ["Symbol"],
   "srcdoc": "./index.html",
   "parameters": {
     "instance": [
       {
-        "id": "apiToken",
-        "name": "Shopify Read-only Storefront Access Token",
+        "id": "apiBase",
+        "name": "Intershop RESTFul API endpoint",
         "type": "Symbol",
-        "default": "b5392a6d4ba10c47cb4ad1645bf78eb4"
+        "default": "https://cyan.fenego.zone/INTERSHOP/rest/WFS/inSPIRED-inTRONICS_Business-Site/-/"
       },
       {
-        "id": "apiEndpoint",
-        "name": "Shopify GraphQL endpoint",
+        "id": "imagesRoot",
+        "name": "Intershop Images Root",
         "type": "Symbol",
-        "default": "https://contentful-demo.myshopify.com/api/graphql"
+        "default": "https://cyan.fenego.zone"
       }
     ]
   }
