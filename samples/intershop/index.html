@@ -40,6 +40,30 @@
                 text-align: right;
                 letter-spacing: 0.1rem;
                 color: #0eb87f;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                overflow: hidden;
+            }
+
+            .category .body {
+                position: relative;
+                overflow: hidden;
+            }
+
+            .category .body::after {
+                display: block;
+                content: "";
+                padding-top: 100%;
+            }
+
+            .category .body img {
+                position: absolute;
+                display: block;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                left: 0;
+                object-fit: contain;
             }
         </style>
         <script src="https://unpkg.com/contentful-ui-extensions-sdk@3"></script>
@@ -190,12 +214,21 @@
                 /**
                  * Category
                  */
-                const Category = (data, onClick) => {
+                const Category = (data, onClick, extension) => {
+                    const imageUrl =
+                        data.images && data.images.length
+                            ? `${stripTrailing(extension.parameters.instance.imagesRoot)}/${stripLeading(
+                                  data.images[0].effectiveUrl,
+                              )}`
+                            : ASSET_URL;
+
                     const $category = $(`
                         <div class="col-sm-4">
                             <div class="category">
                                 <div class="title">${data.name}</div>
-                                <div class="body">TEST</div>
+                                <div class="body">
+                                    <img src="${imageUrl}" />
+                                </div>
                             </div>
                         </div>
                     `);
@@ -255,14 +288,14 @@
                 /**
                  * SubCategories
                  */
-                const SubCategories = (category, root, onClick) => {
+                const SubCategories = (category, root, onClick, extension) => {
                     const $subCategories = $(`<div class="subcategories"></div>`);
                     const $list = $(`<div class="list row"></div>`);
                     $subCategories.append($list);
 
                     if (typeof category.length === "number") {
                         for (const subcategory of category) {
-                            $list.append(Category(subcategory, onClick));
+                            $list.append(Category(subcategory, onClick, extension));
                         }
 
                         $subCategories.prepend(Breadcrumb({ categoryPath: [] }, root, onClick));
@@ -274,7 +307,7 @@
 
                     // Render categories
                     for (const subcategory of category.subCategories) {
-                        $list.append(Category(subcategory, onClick));
+                        $list.append(Category(subcategory, onClick, extension));
                     }
 
                     return $subCategories;
@@ -283,7 +316,7 @@
                 /**
                  * Tree component
                  */
-                const CategoryTree = (data, onSelect) => {
+                const CategoryTree = (data, onSelect, extension) => {
                     const $tree = $(`<div class="tree"></div>`);
 
                     /**
@@ -292,11 +325,11 @@
                     const handleClick = category => {
                         // Short circuit
                         if (!category) {
-                            return mount($tree, SubCategories(data, data, handleClick));
+                            return mount($tree, SubCategories(data, data, handleClick, extension));
                         }
 
                         if (category.subCategories && category.subCategories.length) {
-                            return mount($tree, SubCategories(category, data, handleClick));
+                            return mount($tree, SubCategories(category, data, handleClick, extension));
                         }
 
                         // Render product list
@@ -304,7 +337,7 @@
                     };
 
                     // Intial mount
-                    mount($tree, SubCategories(data, data, handleClick));
+                    mount($tree, SubCategories(data, data, handleClick, extension));
 
                     return $tree;
                 };
@@ -321,7 +354,7 @@
 
                     // Fetch the resources
                     getCategories(extension)
-                        .then(tree => mount($browser, CategoryTree(tree, onSelect)))
+                        .then(tree => mount($browser, CategoryTree(tree, onSelect, extension)))
                         .catch(() => mount($browser, Error()));
 
                     return $browser;
