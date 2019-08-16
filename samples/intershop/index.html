@@ -45,6 +45,17 @@
                 overflow: hidden;
             }
 
+            .category .title .header-select {
+                float: right;
+                display: inline-block;
+                color: #536171;
+                margin-left: 0.425rem;
+            }
+
+            .category .title .header-select:hover {
+                text-decoration: none;
+            }
+
             .category .body {
                 position: relative;
                 overflow: hidden;
@@ -135,10 +146,15 @@
                 const mount = ($target, $component) => $target.empty().append($component);
 
                 /**
+                 * Get the slug for this category
+                 */
+                const getSlugFromCategory = category => category.categoryPath[category.categoryPath.length - 1].slug;
+
+                /**
                  * Find parent category from slug
                  */
-                const findParentCategoryFromSegment = (segment, root) => {
-                    const chuncks = segment.slug.split("/");
+                const findParentCategoryFromSlug = (slug, root) => {
+                    const chuncks = slug.split("/");
                     const rootChunck = chuncks.shift();
                     const rootCategory = root.find(category => category.id === rootChunck) || null;
 
@@ -214,7 +230,7 @@
                 /**
                  * Category
                  */
-                const Category = (data, onClick, extension) => {
+                const Category = (data, onClick, extension, onSelect) => {
                     const imageUrl =
                         data.images && data.images.length
                             ? `${stripTrailing(extension.parameters.instance.imagesRoot)}/${stripLeading(
@@ -233,7 +249,19 @@
                         </div>
                     `);
 
-                    $category.on("click", () => onClick(data));
+                    if (onClick) {
+                        $category.on("click", () => onClick(data));
+                    }
+
+                    if (onSelect) {
+                        const $select = $(`<a class="header-select" href="">...</a>`);
+                        $select.on("click", event => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onSelect(data);
+                        });
+                        $category.find(".title").prepend($select);
+                    }
 
                     return $category;
                 };
@@ -248,7 +276,7 @@
                         $item.append(`<a href="#">${segment.name}</a>`);
                         $item.on("click", event => {
                             event.preventDefault();
-                            onClick(findParentCategoryFromSegment(segment, root));
+                            onClick(findParentCategoryFromSegment(segment.slug, root));
                         });
                     } else {
                         $item.addClass("active");
@@ -288,14 +316,14 @@
                 /**
                  * SubCategories
                  */
-                const SubCategories = (category, root, onClick, extension) => {
+                const SubCategories = (category, root, onClick, extension, onSelect) => {
                     const $subCategories = $(`<div class="subcategories"></div>`);
                     const $list = $(`<div class="list row"></div>`);
                     $subCategories.append($list);
 
                     if (typeof category.length === "number") {
                         for (const subcategory of category) {
-                            $list.append(Category(subcategory, onClick, extension));
+                            $list.append(Category(subcategory, onClick, extension, onSelect));
                         }
 
                         $subCategories.prepend(Breadcrumb({ categoryPath: [] }, root, onClick));
@@ -307,7 +335,7 @@
 
                     // Render categories
                     for (const subcategory of category.subCategories) {
-                        $list.append(Category(subcategory, onClick, extension));
+                        $list.append(Category(subcategory, onClick, extension, onSelect));
                     }
 
                     return $subCategories;
@@ -325,11 +353,11 @@
                     const handleClick = category => {
                         // Short circuit
                         if (!category) {
-                            return mount($tree, SubCategories(data, data, handleClick, extension));
+                            return mount($tree, SubCategories(data, data, handleClick, extension, onSelect));
                         }
 
                         if (category.subCategories && category.subCategories.length) {
-                            return mount($tree, SubCategories(category, data, handleClick, extension));
+                            return mount($tree, SubCategories(category, data, handleClick, extension, onSelect));
                         }
 
                         // Render product list
@@ -360,6 +388,37 @@
                     return $browser;
                 };
 
+                /**
+                 * ValueDisplay
+                 */
+                const Value = (extension, onClick) => {
+                    const value = extension.field.getValue();
+                    const $wrapper = $(`<div class="value row"></div>`);
+
+                    if (!value || !value.trim().length) {
+                        return $wrapper.append(Category({ name: "Undefined" }, onClick, extension));
+                    }
+
+                    $wrapper.append(Loader());
+
+                    getCategories(extension)
+                        .then(root => findParentCategoryFromSlug(value, root))
+                        .then(category => {
+                            if (!category) {
+                                extension.field.setValue();
+                                throw new Error("Category not found!");
+                            }
+
+                            mount($wrapper, Category(category, onClick, extension));
+                        })
+                        .catch(() => {
+                            extension.field.setValue();
+                            mount($wrapper, Category({ name: "Undefined" }, onClick, extension));
+                        });
+
+                    return $wrapper;
+                };
+
                 // COMPONENTS - END //
 
                 /**
@@ -368,7 +427,14 @@
                 window.contentfulExtension.init(async extension => {
                     extension.window.startAutoResizer();
                     const $content = $("#content");
-                    mount($content, CategoryBrowser(extension, console.log));
+
+                    const handleSelectCategory = category =>
+                        extension.field
+                            .setValue(getSlugFromCategory(category))
+                            .then(() => mount($content, Value(extension, handleOpenSelector)));
+                    const handleOpenSelector = () => mount($content, CategoryBrowser(extension, handleSelectCategory));
+
+                    mount($content, Value(extension, handleOpenSelector));
                 });
             })();
         </script>
